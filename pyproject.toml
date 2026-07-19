@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "desafio_sincred"
+version = "1.0.0"
+description = "Data Product Transacional utilizando Databricks e Delta Lake."
+readme = "README.md"
+requires-python = ">=3.11"
+
+authors = [
+    { name = "Luiza Autran" }
+]
+
+keywords = [
+    "Databricks",
+    "Delta Lake",
+    "Lakehouse",
+    "Data Engineering",
+    "Python"
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "testes"
+]
+
+pythonpath = [
+    "."
+]
+
+[tool.ruff]
+line-length = 100
+
+target-version = "py311"
