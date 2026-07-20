@@ -25,7 +25,6 @@ codigo/
 configuracao/
 dados/
 notebooks/
-sql/
 testes/
 
 ## Fluxo
