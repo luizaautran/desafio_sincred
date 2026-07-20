@@ -1,0 +1,39 @@
+data_execucao,detalhe,status,teste
+2026-07-20T13:46:09.891Z,Registros inválidos: 0,APROVADO,Campos obrigatórios preenchidos: workspace.prata.estornos
+2026-07-20T13:46:08.898Z,Registros inválidos: 0,APROVADO,Campos obrigatórios preenchidos: workspace.prata.eventos_risco
+2026-07-20T13:46:07.788Z,Registros inválidos: 0,APROVADO,Campos obrigatórios preenchidos: workspace.prata.transacoes
+2026-07-20T13:46:10.724Z,Registros inválidos: 0,APROVADO,Estornos possuem valor positivo
+2026-07-20T13:46:18.330Z,Chaves órfãs: 0,APROVADO,Integridade: workspace.ouro.fato_estornos.id_transacao
+2026-07-20T13:46:16.620Z,Chaves órfãs: 0,APROVADO,Integridade: workspace.ouro.fato_eventos_risco.id_transacao
+2026-07-20T13:46:12.974Z,Chaves órfãs: 0,APROVADO,Integridade: workspace.ouro.fato_transacoes.id_cliente
+2026-07-20T13:46:14.746Z,Chaves órfãs: 0,APROVADO,Integridade: workspace.ouro.fato_transacoes.id_conta
+2026-07-20T13:46:06.595Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.ouro.fato_estornos
+2026-07-20T13:46:05.390Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.ouro.fato_eventos_risco
+2026-07-20T13:46:03.850Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.ouro.fato_transacoes
+2026-07-20T13:45:59.606Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.prata.cartoes
+2026-07-20T13:45:57.071Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.prata.clientes
+2026-07-20T13:45:58.388Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.prata.contas
+2026-07-20T13:46:02.791Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.prata.estornos
+2026-07-20T13:46:01.668Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.prata.eventos_risco
+2026-07-20T13:46:00.628Z,Grupos duplicados: 0,APROVADO,Sem duplicidade: workspace.prata.transacoes
+2026-07-20T13:46:18.697Z,Registros inválidos: 0,APROVADO,Severidades possuem domínio válido
+2026-07-20T13:45:49.926Z,,APROVADO,Tabela existe: workspace.ouro.analise_risco_clientes
+2026-07-20T13:45:47.217Z,,APROVADO,Tabela existe: workspace.ouro.dim_clientes
+2026-07-20T13:45:47.786Z,,APROVADO,Tabela existe: workspace.ouro.dim_contas
+2026-07-20T13:45:49.382Z,,APROVADO,Tabela existe: workspace.ouro.fato_estornos
+2026-07-20T13:45:48.859Z,,APROVADO,Tabela existe: workspace.ouro.fato_eventos_risco
+2026-07-20T13:45:48.336Z,,APROVADO,Tabela existe: workspace.ouro.fato_transacoes
+2026-07-20T13:45:45.311Z,,APROVADO,Tabela existe: workspace.prata.cartoes
+2026-07-20T13:45:44.419Z,,APROVADO,Tabela existe: workspace.prata.clientes
+2026-07-20T13:45:44.864Z,,APROVADO,Tabela existe: workspace.prata.contas
+2026-07-20T13:45:46.689Z,,APROVADO,Tabela existe: workspace.prata.estornos
+2026-07-20T13:45:46.230Z,,APROVADO,Tabela existe: workspace.prata.eventos_risco
+2026-07-20T13:45:45.789Z,,APROVADO,Tabela existe: workspace.prata.transacoes
+2026-07-20T13:45:54.068Z,Quantidade: 33,APROVADO,Tabela possui registros: workspace.ouro.dim_clientes
+2026-07-20T13:45:54.883Z,Quantidade: 36,APROVADO,Tabela possui registros: workspace.ouro.dim_contas
+2026-07-20T13:45:55.659Z,Quantidade: 10,APROVADO,Tabela possui registros: workspace.ouro.fato_transacoes
+2026-07-20T13:45:52.324Z,Quantidade: 36,APROVADO,Tabela possui registros: workspace.prata.cartoes
+2026-07-20T13:45:50.727Z,Quantidade: 40,APROVADO,Tabela possui registros: workspace.prata.clientes
+2026-07-20T13:45:51.538Z,Quantidade: 42,APROVADO,Tabela possui registros: workspace.prata.contas
+2026-07-20T13:45:53.058Z,Quantidade: 11,APROVADO,Tabela possui registros: workspace.prata.transacoes
+2026-07-20T13:46:10.336Z,Registros inválidos: 0,APROVADO,Transações possuem valor positivo

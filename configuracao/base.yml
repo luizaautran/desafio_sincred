@@ -1,0 +1,59 @@
+projeto:
+  nome: desafio_sincred
+  ambiente: desenvolvimento
+
+catalogo:
+  nome: sincred
+
+esquemas:
+  bronze: bronze
+  prata: prata
+  ouro: ouro
+
+caminhos:
+  origem: dados/entrada
+  bronze: dados/processados/bronze
+  prata: dados/processados/prata
+  ouro: dados/processados/ouro
+  checkpoint: dados/checkpoints
+
+formato:
+  origem: csv
+  destino: delta
+
+ingestao:
+  cabecalho: true
+  inferir_esquema: false
+  delimitador: ","
+  modo_escrita: append
+
+entidades:
+  clientes:
+    arquivo: clientes
+    chave_primaria:
+      - id_cliente
+
+  contas:
+    arquivo: contas
+    chave_primaria:
+      - id_conta
+
+  cartoes:
+    arquivo: cartoes
+    chave_primaria:
+      - id_cartao
+
+  transacoes:
+    arquivo: transacoes
+    chave_primaria:
+      - id_transacao
+
+  estornos:
+    arquivo: estornos
+    chave_primaria:
+      - id_estorno
+
+  eventos_risco:
+    arquivo: eventos_risco
+    chave_primaria:
+      - id_evento

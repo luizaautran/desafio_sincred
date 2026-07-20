@@ -1,39 +1,42 @@
-# Desafio Sincred — Data Product Transacional
+# Desafio Sincred
 
-Solução desenvolvida para o desafio técnico de Engenharia de Dados Sênior.
-
-O projeto implementa um Data Product transacional utilizando Databricks,
-Delta Lake e arquitetura Medallion, com camadas Bronze, Prata e Ouro.
-
-## Objetivos
-
-- Implementar ingestão incremental de arquivos;
-- Utilizar Delta Lake como formato persistente;
-- Construir camadas Bronze, Prata e Ouro;
-- Aplicar regras de qualidade de dados;
-- Segregar registros inválidos em quarentena;
-- Implementar histórico SCD Tipo 2;
-- Garantir idempotência com MERGE;
-- Criar produtos de dados para análises e Data Science;
-- Demonstrar boas práticas de engenharia de software e governança.
+Pipeline Lakehouse desenvolvido utilizando Databricks, PySpark e Delta Lake.
 
 ## Arquitetura
 
-```text
-Arquivos de origem
-        |
-        v
-Zona de entrada
-        |
-        v
-Camada Bronze
-        |
-        v
-Camada Prata
-        |
-        v
-Camada Ouro
-        |
-        +--> Análises
-        +--> Prevenção de perdas
-        +--> Data Science
+Bronze
+↓
+Prata
+↓
+Ouro
+
+## Tecnologias
+
+- Python
+- PySpark
+- Delta Lake
+- Databricks
+- SQL
+- YAML
+
+## Estrutura
+
+codigo/
+configuracao/
+dados/
+notebooks/
+testes/
+
+## Fluxo
+
+1. Massa Sintética
+2. Bronze
+3. Controle Arquivos
+4. Prata
+5. Ouro
+6. Testes
+7. Orquestração
+
+## Autor
+
+Erly Autran
