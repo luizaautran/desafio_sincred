@@ -12,7 +12,10 @@ import json
 CATALOGO = "workspace"
 SCHEMA_OBSERVABILIDADE = "observabilidade"
 
-CAMINHO_BASE_NOTEBOOKS = "/Workspace/Users/luizaautran@gmail.com/"
+CAMINHO_BASE_NOTEBOOKS = (
+    "/Workspace/Users/luizaautran@gmail.com/"
+    "desafio_sincred/notebooks"
+)
 EXECUTAR_GERACAO_MASSA = False
 EXECUTAR_CONSULTAS = True
 TEMPO_LIMITE_SEGUNDOS = 3600

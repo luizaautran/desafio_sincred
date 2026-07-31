@@ -9,10 +9,15 @@
 from pyspark.sql import functions as F
 from datetime import datetime
 
-CATALOGO = "workspace"
-SCHEMA_PRATA = "prata"
-SCHEMA_OURO = "ouro"
-SCHEMA_QUARENTENA = "quarentena"
+dbutils.widgets.text("catalogo", "workspace")
+dbutils.widgets.text("schema_prata", "prata")
+dbutils.widgets.text("schema_ouro", "ouro")
+dbutils.widgets.text("schema_quarentena", "quarentena")
+
+CATALOGO = dbutils.widgets.get("catalogo")
+SCHEMA_PRATA = dbutils.widgets.get("schema_prata")
+SCHEMA_OURO = dbutils.widgets.get("schema_ouro")
+SCHEMA_QUARENTENA = dbutils.widgets.get("schema_quarentena")
 
 falhas = []
 resultados = []

@@ -15,6 +15,14 @@
 
 # COMMAND ----------
 
+import os
+import sys
+
+CAMINHO_CODIGO = os.path.abspath("../codigo")
+
+if CAMINHO_CODIGO not in sys.path:
+    sys.path.insert(0, CAMINHO_CODIGO)
+
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
     LongType,
@@ -50,24 +58,30 @@ from produto_transacional.utilitarios.tabelas import (
     alinhar_schema_com_tabela,
     tabela_existe,
 )
+
 # COMMAND ----------
 
-CATALOGO = "workspace"
+dbutils.widgets.text("catalogo", "workspace")
+dbutils.widgets.text("schema_bronze", "bronze")
+dbutils.widgets.text("schema_prata", "prata")
+dbutils.widgets.text("schema_quarentena", "quarentena")
+dbutils.widgets.text(
+    "schema_observabilidade",
+    "observabilidade",
+)
 
-SCHEMA_BRONZE = "bronze"
-SCHEMA_PRATA = "prata"
-SCHEMA_QUARENTENA = "quarentena"
-SCHEMA_OBSERVABILIDADE = "observabilidade"
-
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOGO}.{SCHEMA_PRATA}")
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOGO}.{SCHEMA_QUARENTENA}")
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOGO}.{SCHEMA_OBSERVABILIDADE}")
-
+CATALOGO = dbutils.widgets.get("catalogo")
+SCHEMA_BRONZE = dbutils.widgets.get("schema_bronze")
+SCHEMA_PRATA = dbutils.widgets.get("schema_prata")
+SCHEMA_QUARENTENA = dbutils.widgets.get("schema_quarentena")
+SCHEMA_OBSERVABILIDADE = dbutils.widgets.get(
+    "schema_observabilidade"
+)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Métricas com schema explícito
+# MAGIC ## Definição da função de métricas
 
 # COMMAND ----------
 
@@ -195,6 +209,7 @@ def processar_clientes() -> None:
     )
 
     gravar_quarentena(
+        spark,
         invalidos,
         f"{CATALOGO}.{SCHEMA_QUARENTENA}.clientes"
     )
@@ -203,15 +218,17 @@ def processar_clientes() -> None:
         spark=spark,
         dataframe=validos,
         tabela_destino=f"{CATALOGO}.{SCHEMA_PRATA}.clientes",
-        chave_negocio="id_cliente",
-        colunas_atributos=[
+        chaves=["id_cliente"],
+        colunas_comparacao=[
             "cpf",
             "nome",
             "cidade",
             "estado",
             "renda",
         ],
-        coluna_data_evento="data_atualizacao",
+        coluna_inicio_vigencia="data_inicio_vigencia",
+        coluna_fim_vigencia="data_fim_vigencia",
+        coluna_registro_ativo="registro_atual",
     )
 
     registrar_metrica(
@@ -268,6 +285,7 @@ def processar_contas() -> None:
     )
 
     gravar_quarentena(
+        spark,
         invalidos,
         f"{CATALOGO}.{SCHEMA_QUARENTENA}.contas"
     )
@@ -276,13 +294,15 @@ def processar_contas() -> None:
         spark=spark,
         dataframe=validos,
         tabela_destino=f"{CATALOGO}.{SCHEMA_PRATA}.contas",
-        chave_negocio="id_conta",
-        colunas_atributos=[
+        chaves=["id_conta"],
+        colunas_comparacao=[
             "id_cliente",
             "tipo_conta",
             "status_conta",
         ],
-        coluna_data_evento="data_atualizacao",
+        coluna_inicio_vigencia="data_inicio_vigencia",
+        coluna_fim_vigencia="data_fim_vigencia",
+        coluna_registro_ativo="registro_atual",
     )
     
     registrar_metrica(
@@ -340,6 +360,7 @@ def processar_cartoes() -> None:
     )
 
     gravar_quarentena(
+        spark,
         invalidos,
         f"{CATALOGO}.{SCHEMA_QUARENTENA}.cartoes"
     )
@@ -348,14 +369,16 @@ def processar_cartoes() -> None:
         spark=spark,
         dataframe=validos,
         tabela_destino=f"{CATALOGO}.{SCHEMA_PRATA}.cartoes",
-        chave_negocio="id_cartao",
-        colunas_atributos=[
+        chaves=["id_cartao"],
+        colunas_comparacao=[
             "id_conta",
             "tipo_cartao",
             "limite",
             "status_cartao",
         ],
-        coluna_data_evento="data_atualizacao",
+        coluna_inicio_vigencia="data_inicio_vigencia",
+        coluna_fim_vigencia="data_fim_vigencia",
+        coluna_registro_ativo="registro_atual",
     )
     
     registrar_metrica(
@@ -1090,16 +1113,22 @@ def processar_estornos() -> None:
     )
 
     gravar_quarentena(
+        spark,    
         invalidos,
         nome_tabela_quarentena
     )
 
     executar_merge(
-        spark=spark,
         dataframe=validos,
         tabela_destino=nome_tabela_destino,
-        chave_negocio="id_estorno",
-    )
+        condicao_merge=(
+            "destino.id_estorno = origem.id_estorno"
+        ),
+        colunas_atualizacao={
+            coluna: f"origem.{coluna}"
+            for coluna in validos.columns
+    },
+)
 
     quantidade_origem = origem.count()
     quantidade_validos = validos.count()
