@@ -61,6 +61,8 @@ dbutils.widgets.text(
     "schema_observabilidade",
     "observabilidade",
 )
+dbutils.widgets.text("nome_volume", "arquivos_entrada")
+
 
 CATALOGO = dbutils.widgets.get("catalogo")
 SCHEMA_BRONZE = dbutils.widgets.get("schema_bronze")
@@ -70,12 +72,7 @@ SCHEMA_QUARENTENA = dbutils.widgets.get("schema_quarentena")
 SCHEMA_OBSERVABILIDADE = dbutils.widgets.get(
     "schema_observabilidade"
 )
-print(f"CATALOGO: {CATALOGO}")
-print(f"SCHEMA_BRONZE: {SCHEMA_BRONZE}")
-print(f"SCHEMA_PRATA: {SCHEMA_PRATA}")
-print(f"SCHEMA_OURO: {SCHEMA_OURO}")
-print(f"SCHEMA_QUARENTENA: {SCHEMA_QUARENTENA}")
-print(f"SCHEMA_OBSERVABILIDADE: {SCHEMA_OBSERVABILIDADE}")
+NOME_VOLUME = dbutils.widgets.get("nome_volume")
 
 # COMMAND ----------
 
@@ -127,6 +124,7 @@ spark.sql(
     {CATALOGO}.{SCHEMA_BRONZE}.{NOME_VOLUME}
     """
 )
+CAMINHO_VOLUME = f"/Volumes/{CATALOGO}/{SCHEMA_BRONZE}/{NOME_VOLUME}"
 
 print(f"Volume validado: {CAMINHO_VOLUME}")
 
