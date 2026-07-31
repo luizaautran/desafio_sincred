@@ -51,28 +51,28 @@ spark.range(5).show()
 
 # COMMAND ----------
 
-# Configurações centrais do projeto.
-CATALOGO = "workspace"
-
-SCHEMA_BRONZE = "bronze"
-SCHEMA_PRATA = "prata"
-SCHEMA_OURO = "ouro"
-SCHEMA_QUARENTENA = "quarentena"
-SCHEMA_OBSERVABILIDADE = "observabilidade"
-
-NOME_VOLUME = "arquivos_entrada"
-
-CAMINHO_VOLUME = (
-    f"/Volumes/{CATALOGO}/{SCHEMA_BRONZE}/{NOME_VOLUME}"
+# Configurações recebidas pelo orquestrador.
+dbutils.widgets.text("catalogo", "workspace")
+dbutils.widgets.text("schema_bronze", "bronze")
+dbutils.widgets.text("schema_prata", "prata")
+dbutils.widgets.text("schema_ouro", "ouro")
+dbutils.widgets.text("schema_quarentena", "quarentena")
+dbutils.widgets.text(
+    "schema_observabilidade",
+    "observabilidade",
 )
+dbutils.widgets.text("nome_volume", "arquivos_entrada")
 
-SCHEMA_VERSION = "1.0"
 
-print("Configurações carregadas:")
-print(f"Catálogo: {CATALOGO}")
-print(f"Schema Bronze: {SCHEMA_BRONZE}")
-print(f"Volume: {CAMINHO_VOLUME}")
-print(f"Versão do schema: {SCHEMA_VERSION}")
+CATALOGO = dbutils.widgets.get("catalogo")
+SCHEMA_BRONZE = dbutils.widgets.get("schema_bronze")
+SCHEMA_PRATA = dbutils.widgets.get("schema_prata")
+SCHEMA_OURO = dbutils.widgets.get("schema_ouro")
+SCHEMA_QUARENTENA = dbutils.widgets.get("schema_quarentena")
+SCHEMA_OBSERVABILIDADE = dbutils.widgets.get(
+    "schema_observabilidade"
+)
+NOME_VOLUME = dbutils.widgets.get("nome_volume")
 
 # COMMAND ----------
 
@@ -124,6 +124,7 @@ spark.sql(
     {CATALOGO}.{SCHEMA_BRONZE}.{NOME_VOLUME}
     """
 )
+CAMINHO_VOLUME = f"/Volumes/{CATALOGO}/{SCHEMA_BRONZE}/{NOME_VOLUME}"
 
 print(f"Volume validado: {CAMINHO_VOLUME}")
 

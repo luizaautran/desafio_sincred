@@ -35,28 +35,39 @@ from pyspark.sql.types import (
 
 # COMMAND ----------
 
-CATALOGO = "workspace"
-
-SCHEMA_BRONZE = "bronze"
-SCHEMA_OBSERVABILIDADE = "observabilidade"
-
-VOLUME_ENTRADA = "arquivos_entrada"
-
-CAMINHO_BASE = (
-    f"/Volumes/{CATALOGO}/{SCHEMA_BRONZE}/{VOLUME_ENTRADA}"
+# Parâmetros recebidos pelo orquestrador
+dbutils.widgets.text("catalogo", "workspace")
+dbutils.widgets.text("schema_bronze", "bronze")
+dbutils.widgets.text("nome_volume", "arquivos_entrada")
+dbutils.widgets.text(
+    "schema_observabilidade",
+    "observabilidade",
 )
 
+CATALOGO = dbutils.widgets.get("catalogo")
+SCHEMA_BRONZE = dbutils.widgets.get("schema_bronze")
+NOME_VOLUME = dbutils.widgets.get("nome_volume")
+SCHEMA_OBSERVABILIDADE = dbutils.widgets.get(
+    "schema_observabilidade"
+)
+# Caminho principal do volume
+CAMINHO_BASE  = (
+    f"/Volumes/{CATALOGO}/"
+    f"{SCHEMA_BRONZE}/"
+    f"{NOME_VOLUME}"
+)
+
+# Diretórios utilizados pelo notebook
 CAMINHO_PROCESSADOS = f"{CAMINHO_BASE}/processados"
 CAMINHO_ERROS = f"{CAMINHO_BASE}/erros"
 
+
+# Tabela de controle
 TABELA_CONTROLE = (
-    f"{CATALOGO}.{SCHEMA_OBSERVABILIDADE}."
+    f"{CATALOGO}."
+    f"{SCHEMA_OBSERVABILIDADE}."
     "controle_arquivos_processados"
 )
-
-print(f"Caminho de entrada: {CAMINHO_BASE}")
-print(f"Caminho de processados: {CAMINHO_PROCESSADOS}")
-print(f"Tabela de controle: {TABELA_CONTROLE}")
 
 # COMMAND ----------
 
@@ -261,6 +272,10 @@ def caminho_existe(caminho: str) -> bool:
 
     except Exception:
         return False
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 

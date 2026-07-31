@@ -64,14 +64,13 @@ from pyspark.sql import functions as F
 
 # COMMAND ----------
 
-CATALOGO = "workspace"
-SCHEMA_PRATA = "prata"
-SCHEMA_OURO = "ouro"
+dbutils.widgets.text("catalogo", "workspace")
+dbutils.widgets.text("schema_prata", "prata")
+dbutils.widgets.text("schema_ouro", "ouro")
 
-spark.sql(
-    f"CREATE SCHEMA IF NOT EXISTS {CATALOGO}.{SCHEMA_OURO}"
-)
-
+CATALOGO = dbutils.widgets.get("catalogo")
+SCHEMA_PRATA = dbutils.widgets.get("schema_prata")
+SCHEMA_OURO = dbutils.widgets.get("schema_ouro")
 
 # COMMAND ----------
 

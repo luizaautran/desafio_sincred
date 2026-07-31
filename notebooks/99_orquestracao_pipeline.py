@@ -12,7 +12,10 @@ import json
 CATALOGO = "workspace"
 SCHEMA_OBSERVABILIDADE = "observabilidade"
 
-CAMINHO_BASE_NOTEBOOKS = "/Workspace/Users/luizaautran@gmail.com/"
+CAMINHO_BASE_NOTEBOOKS = (
+    "/Workspace/Users/luizaautran@gmail.com/"
+    "desafio_sincred/notebooks"
+)
 EXECUTAR_GERACAO_MASSA = False
 EXECUTAR_CONSULTAS = True
 TEMPO_LIMITE_SEGUNDOS = 3600
@@ -116,21 +119,3 @@ duracao_pipeline = (fim_pipeline - inicio_pipeline).total_seconds()
 print("=" * 80)
 print(f"Status: {status_pipeline}")
 print(f"Duração total: {duracao_pipeline:.2f} segundos")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Resumo
-
-# COMMAND ----------
-
-if resultados_execucao:
-    display(spark.createDataFrame(resultados_execucao))
-
-dbutils.notebook.exit(json.dumps({
-    "status": status_pipeline,
-    "inicio": inicio_pipeline.isoformat(),
-    "fim": fim_pipeline.isoformat(),
-    "duracao_segundos": duracao_pipeline,
-    "notebooks_executados": len(resultados_execucao)
-}, ensure_ascii=False))
