@@ -1,4 +1,3 @@
-# Databricks notebook source
 
 # MAGIC %md
 # MAGIC # Produto Transacional — Quarentena
