@@ -16,11 +16,6 @@ def spark():
     sessao = SparkSession.getActiveSession()
 
     if sessao is None:
-        sessao = (
-            SparkSession.builder
-            .master("local[2]")
-            .appName("testes-desafio-sincred")
-            .getOrCreate()
-        )
+        sessao = SparkSession.builder.getOrCreate()
 
-    yield sessao
+    return sessao
