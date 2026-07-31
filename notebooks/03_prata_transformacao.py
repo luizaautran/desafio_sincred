@@ -1,10 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # 03 — Camada Prata Simplificada V2
+# MAGIC # 03 — Camada Prata 
 # MAGIC
 # MAGIC Versão revisada para **Databricks Serverless**, com foco em estabilidade e entrega.
 # MAGIC
-# MAGIC ## O que esta versão corrige
 # MAGIC
 # MAGIC - Não utiliza RDD.
 # MAGIC - Trata decimais no padrão brasileiro e internacional.
@@ -16,18 +15,41 @@
 
 # COMMAND ----------
 
-from delta.tables import DeltaTable
-from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
-    StructType,
-    StructField,
-    StringType,
     LongType,
-    TimestampType
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
 )
 
+from produto_transacional.qualidade.quarentena import (
+    gravar_quarentena,
+)
 
+from produto_transacional.qualidade.validacoes import (
+    adicionar_motivo_quarentena,
+    separar_validos_invalidos,
+)
+
+from produto_transacional.prata.merge import (
+    executar_merge,
+)
+
+from produto_transacional.prata.scd import (
+    executar_scd_tipo_2,
+)
+
+from produto_transacional.utilitarios.dataframe import (
+    converter_decimal_seguro,
+    deduplicar,
+)
+
+from produto_transacional.utilitarios.tabelas import (
+    alinhar_schema_com_tabela,
+    tabela_existe,
+)
 # COMMAND ----------
 
 CATALOGO = "workspace"
@@ -40,214 +62,6 @@ SCHEMA_OBSERVABILIDADE = "observabilidade"
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOGO}.{SCHEMA_PRATA}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOGO}.{SCHEMA_QUARENTENA}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOGO}.{SCHEMA_OBSERVABILIDADE}")
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Funções utilitárias
-
-# COMMAND ----------
-
-def tabela_existe(nome_tabela: str) -> bool:
-    return spark.catalog.tableExists(nome_tabela)
-
-
-def converter_decimal_seguro(
-    nome_coluna: str,
-    precisao: int = 18,
-    escala: int = 2
-):
-    """
-    Aceita:
-    23221,69
-    23.221,69
-    23221.69
-    Valores inválidos retornam NULL.
-    """
-
-    coluna = f"`{nome_coluna}`"
-
-    expressao = f"""
-        try_cast(
-            CASE
-                WHEN trim(cast({coluna} AS string))
-                    RLIKE '^-?[0-9]{{1,3}}(\\\\.[0-9]{{3}})+,[0-9]+$'
-                THEN regexp_replace(
-                    regexp_replace(
-                        trim(cast({coluna} AS string)),
-                        '\\\\.',
-                        ''
-                    ),
-                    ',',
-                    '.'
-                )
-
-                WHEN trim(cast({coluna} AS string))
-                    RLIKE '^-?[0-9]+,[0-9]+$'
-                THEN regexp_replace(
-                    trim(cast({coluna} AS string)),
-                    ',',
-                    '.'
-                )
-
-                ELSE trim(cast({coluna} AS string))
-            END
-            AS DECIMAL({precisao},{escala})
-        )
-    """
-
-    return F.expr(expressao)
-
-
-def coluna_timestamp_segura(nome_coluna: str):
-    return F.coalesce(
-        F.to_timestamp(F.col(nome_coluna)),
-        F.current_timestamp()
-    )
-
-
-def adicionar_motivo_quarentena(
-    dataframe: DataFrame,
-    regras: list[tuple]
-) -> DataFrame:
-    motivos = [
-        F.when(condicao, F.lit(mensagem))
-        for condicao, mensagem in regras
-    ]
-
-    return dataframe.withColumn(
-        "motivo_quarentena",
-        F.concat_ws("; ", *motivos)
-    )
-
-
-def separar_validos_invalidos(
-    dataframe: DataFrame
-) -> tuple[DataFrame, DataFrame]:
-    invalidos = dataframe.filter(
-        F.length(F.trim(F.col("motivo_quarentena"))) > 0
-    )
-
-    validos = dataframe.filter(
-        F.length(F.trim(F.col("motivo_quarentena"))) == 0
-    ).drop("motivo_quarentena")
-
-    return validos, invalidos
-
-
-
-
-def deduplicar(
-    dataframe: DataFrame,
-    chaves: list[str],
-    coluna_ordenacao: str
-) -> DataFrame:
-    from pyspark.sql.window import Window
-
-    criterios = [
-        F.col(coluna_ordenacao).desc_nulls_last()
-    ]
-
-    if "data_ingestao" in dataframe.columns:
-        criterios.append(
-            F.col("data_ingestao").desc_nulls_last()
-        )
-
-    if "arquivo_origem" in dataframe.columns:
-        criterios.append(
-            F.col("arquivo_origem").desc_nulls_last()
-        )
-
-    janela = (
-        Window
-        .partitionBy(*chaves)
-        .orderBy(*criterios)
-    )
-
-    return (
-        dataframe
-        .dropDuplicates()
-        .withColumn(
-            "numero_linha",
-            F.row_number().over(janela)
-        )
-        .filter(F.col("numero_linha") == 1)
-        .drop("numero_linha")
-    )
-
-def alinhar_schema_com_tabela(
-    dataframe: DataFrame,
-    tabela_destino: str
-) -> DataFrame:
-    """
-    Seleciona e converte as colunas conforme o schema Delta existente.
-    Isso reduz erros de metadata/schema em append.
-    """
-
-    schema_destino = spark.table(tabela_destino).schema
-    colunas_origem = set(dataframe.columns)
-
-    expressoes = []
-
-    for campo in schema_destino.fields:
-        if campo.name in colunas_origem:
-            expressoes.append(
-                F.col(campo.name)
-                .cast(campo.dataType)
-                .alias(campo.name)
-            )
-        else:
-            expressoes.append(
-                F.lit(None)
-                .cast(campo.dataType)
-                .alias(campo.name)
-            )
-
-    return dataframe.select(*expressoes)
-
-
-def gravar_tabela_sobrescrevendo(
-    dataframe: DataFrame,
-    tabela_destino: str
-) -> None:
-    (
-        dataframe.write
-        .format("delta")
-        .mode("overwrite")
-        .option("overwriteSchema", "true")
-        .saveAsTable(tabela_destino)
-    )
-
-
-def gravar_quarentena(
-    dataframe: DataFrame,
-    tabela_destino: str
-) -> None:
-    if dataframe.isEmpty():
-        print(f"Sem registros inválidos: {tabela_destino}")
-        return
-
-    dados = dataframe.withColumn(
-        "data_quarentena",
-        F.current_timestamp()
-    )
-
-    if not tabela_existe(tabela_destino):
-        gravar_tabela_sobrescrevendo(
-            dados,
-            tabela_destino
-        )
-    else:
-        (
-            dados.write
-            .format("delta")
-            .mode("append")
-            .option("mergeSchema", "true")
-            .saveAsTable(tabela_destino)
-        )
-
-    print(f"Quarentena atualizada: {tabela_destino}")
 
 
 # COMMAND ----------
@@ -275,7 +89,6 @@ def garantir_tabela_metricas() -> str:
     """)
 
     return tabela_metricas
-
 
 def registrar_metrica(
     fonte: str,
@@ -318,6 +131,7 @@ def registrar_metrica(
     )
 
     dataframe_metricas = alinhar_schema_com_tabela(
+        spark,
         dataframe_metricas,
         tabela_metricas
     )
@@ -330,203 +144,6 @@ def registrar_metrica(
     )
 
     print(f"Métrica registrada: {fonte}")
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## SCD Tipo 2
-
-# COMMAND ----------
-
-def aplicar_scd_tipo_2(
-    dataframe: DataFrame,
-    tabela_destino: str,
-    chave_negocio: str,
-    colunas_atributos: list[str],
-    coluna_data_evento: str
-) -> None:
-    colunas_hash = [
-        F.coalesce(
-            F.col(coluna).cast("string"),
-            F.lit("∅")
-        )
-        for coluna in sorted(colunas_atributos)
-    ]
-
-    origem = (
-        dataframe
-        .withColumn(
-            "hash_atributos",
-            F.sha2(
-                F.concat_ws("||", *colunas_hash),
-                256
-            )
-        )
-        .withColumn(
-            "data_inicio_vigencia",
-            F.coalesce(
-                F.col(coluna_data_evento).cast("timestamp"),
-                F.current_timestamp()
-            )
-        )
-        .withColumn(
-            "data_fim_vigencia",
-            F.lit(None).cast("timestamp")
-        )
-        .withColumn(
-            "registro_atual",
-            F.lit(True).cast("boolean")
-        )
-    )
-
-    colunas_obrigatorias = {
-        chave_negocio,
-        "hash_atributos",
-        "data_inicio_vigencia",
-        "data_fim_vigencia",
-        "registro_atual"
-    }
-
-    if not tabela_existe(tabela_destino):
-        gravar_tabela_sobrescrevendo(
-            origem,
-            tabela_destino
-        )
-        print(f"Tabela SCD criada: {tabela_destino}")
-        return
-
-    colunas_existentes = set(
-        spark.table(tabela_destino).columns
-    )
-
-    if not colunas_obrigatorias.issubset(colunas_existentes):
-        gravar_tabela_sobrescrevendo(
-            origem,
-            tabela_destino
-        )
-        print(f"Tabela SCD recriada: {tabela_destino}")
-        return
-
-    registros_atuais = (
-        spark.table(tabela_destino)
-        .filter(F.col("registro_atual") == True)
-        .select(
-            F.col(chave_negocio).alias("chave_destino"),
-            F.col("hash_atributos").alias("hash_destino")
-        )
-    )
-
-    alteracoes = (
-        origem.alias("origem")
-        .join(
-            registros_atuais.alias("destino"),
-            F.col(f"origem.{chave_negocio}")
-            == F.col("destino.chave_destino"),
-            "left"
-        )
-        .filter(
-            F.col("hash_destino").isNull()
-            | (
-                F.col("origem.hash_atributos")
-                != F.col("hash_destino")
-            )
-        )
-        .select("origem.*")
-    )
-
-    if alteracoes.isEmpty():
-        print(f"Sem alterações em: {tabela_destino}")
-        return
-
-    tabela_delta = DeltaTable.forName(
-        spark,
-        tabela_destino
-    )
-
-    (
-        tabela_delta.alias("destino")
-        .merge(
-            alteracoes.select(
-                chave_negocio,
-                "data_inicio_vigencia"
-            ).distinct().alias("origem"),
-            f"""
-            destino.{chave_negocio} = origem.{chave_negocio}
-            AND destino.registro_atual = true
-            """
-        )
-        .whenMatchedUpdate(
-            set={
-                "registro_atual": "false",
-                "data_fim_vigencia":
-                    "origem.data_inicio_vigencia - INTERVAL 1 MICROSECOND"
-            }
-        )
-        .execute()
-    )
-
-    alteracoes_alinhadas = alinhar_schema_com_tabela(
-        alteracoes,
-        tabela_destino
-    )
-
-    (
-        alteracoes_alinhadas.write
-        .format("delta")
-        .mode("append")
-        .saveAsTable(tabela_destino)
-    )
-
-    print(f"SCD atualizado: {tabela_destino}")
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Merge idempotente para fatos
-
-# COMMAND ----------
-
-def aplicar_merge(
-    dataframe: DataFrame,
-    tabela_destino: str,
-    chave_negocio: str
-) -> None:
-    if not tabela_existe(tabela_destino):
-        gravar_tabela_sobrescrevendo(
-            dataframe,
-            tabela_destino
-        )
-        print(f"Tabela criada: {tabela_destino}")
-        return
-
-    colunas_destino = spark.table(
-        tabela_destino
-    ).columns
-
-    dataframe_alinhado = alinhar_schema_com_tabela(
-        dataframe,
-        tabela_destino
-    )
-
-    tabela_delta = DeltaTable.forName(
-        spark,
-        tabela_destino
-    )
-
-    (
-        tabela_delta.alias("destino")
-        .merge(
-            dataframe_alinhado.alias("origem"),
-            f"destino.{chave_negocio} = origem.{chave_negocio}"
-        )
-        .whenMatchedUpdateAll()
-        .whenNotMatchedInsertAll()
-        .execute()
-    )
-
-    print(f"Merge concluído: {tabela_destino}")
 
 
 # COMMAND ----------
@@ -582,12 +199,19 @@ def processar_clientes() -> None:
         f"{CATALOGO}.{SCHEMA_QUARENTENA}.clientes"
     )
 
-    aplicar_scd_tipo_2(
-        validos,
-        f"{CATALOGO}.{SCHEMA_PRATA}.clientes",
-        "id_cliente",
-        ["cpf", "nome", "cidade", "estado", "renda"],
-        "data_atualizacao"
+    executar_scd_tipo_2(
+        spark=spark,
+        dataframe=validos,
+        tabela_destino=f"{CATALOGO}.{SCHEMA_PRATA}.clientes",
+        chave_negocio="id_cliente",
+        colunas_atributos=[
+            "cpf",
+            "nome",
+            "cidade",
+            "estado",
+            "renda",
+        ],
+        coluna_data_evento="data_atualizacao",
     )
 
     registrar_metrica(
@@ -631,7 +255,8 @@ def processar_contas() -> None:
         [
             (F.col("id_conta").isNull(), "id_conta ausente"),
             (F.col("id_cliente").isNull(), "id_cliente ausente"),
-            (F.col("tipo_conta").isNull(), "tipo_conta ausente")        ]
+            (F.col("tipo_conta").isNull(), "tipo_conta ausente"),
+        ],
     )
 
     validos, invalidos = separar_validos_invalidos(dados)
@@ -646,15 +271,20 @@ def processar_contas() -> None:
         invalidos,
         f"{CATALOGO}.{SCHEMA_QUARENTENA}.contas"
     )
-
-    aplicar_scd_tipo_2(
-        validos,
-        f"{CATALOGO}.{SCHEMA_PRATA}.contas",
-        "id_conta",
-        ["id_cliente", "tipo_conta",  "status_conta"],
-        "data_atualizacao"
+    
+    executar_scd_tipo_2(
+        spark=spark,
+        dataframe=validos,
+        tabela_destino=f"{CATALOGO}.{SCHEMA_PRATA}.contas",
+        chave_negocio="id_conta",
+        colunas_atributos=[
+            "id_cliente",
+            "tipo_conta",
+            "status_conta",
+        ],
+        coluna_data_evento="data_atualizacao",
     )
-
+    
     registrar_metrica(
         "contas",
         origem.count(),
@@ -714,14 +344,20 @@ def processar_cartoes() -> None:
         f"{CATALOGO}.{SCHEMA_QUARENTENA}.cartoes"
     )
 
-    aplicar_scd_tipo_2(
-        validos,
-        f"{CATALOGO}.{SCHEMA_PRATA}.cartoes",
-        "id_cartao",
-        ["id_conta", "tipo_cartao", "limite", "status_cartao"],
-        "data_atualizacao"
+    executar_scd_tipo_2(
+        spark=spark,
+        dataframe=validos,
+        tabela_destino=f"{CATALOGO}.{SCHEMA_PRATA}.cartoes",
+        chave_negocio="id_cartao",
+        colunas_atributos=[
+            "id_conta",
+            "tipo_cartao",
+            "limite",
+            "status_cartao",
+        ],
+        coluna_data_evento="data_atualizacao",
     )
-
+    
     registrar_metrica(
         "cartoes",
         origem.count(),
@@ -1067,8 +703,6 @@ def processar_transacoes():
 # MAGIC ## Processamento de eventos de risco
 
 # COMMAND ----------
-
-from pyspark.sql import functions as F
 
 
 def processar_eventos_risco():
@@ -1460,10 +1094,11 @@ def processar_estornos() -> None:
         nome_tabela_quarentena
     )
 
-    aplicar_merge(
-        validos,
-        nome_tabela_destino,
-        "id_estorno"
+    executar_merge(
+        spark=spark,
+        dataframe=validos,
+        tabela_destino=nome_tabela_destino,
+        chave_negocio="id_estorno",
     )
 
     quantidade_origem = origem.count()
@@ -1549,7 +1184,7 @@ tabelas_prata = [
 for tabela in tabelas_prata:
     nome_completo = f"{CATALOGO}.{SCHEMA_PRATA}.{tabela}"
 
-    if tabela_existe(nome_completo):
+    if tabela_existe(spark, nome_completo):
         print(
             nome_completo,
             spark.table(nome_completo).count()
